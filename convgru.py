@@ -123,15 +123,30 @@ class Conv1dGRU(nn.Module):
                                               input_tensor.device)
         seq_len = input_tensor.size(0)
 
-        input_layer = input_tensor
+        input_layer_list = torch.unbind(input_tensor, dim=0)
         for i in range(self.num_layers):
             h = hidden_state_list[i]
-            input_layer_list = []
+            output_layer_list = []
             for t in range(seq_len):
-                h = self.cell_list[i](input_layer[t, :, :, :], h)
-                input_layer_list.append(h)
-            input_layer = torch.stack(input_layer_list, dim=0)
-        output_tensor = input_layer
+                h = self.cell_list[i](input_layer_list[t], h)
+                output_layer_list.append(h)
+            input_layer_list = output_layer_list
+        output_tensor = torch.stack(output_layer_list, dim=0)
+
+        '''
+        h_in_list = hidden_state_list
+        output_list = []
+        for t in range(seq_len):
+            input = input_tensor[t, :, :, :]
+            h_out_list = []
+            for i in range(self.num_layers):
+                output = self.cell_list[i](input, h_in_list[i])
+                input = output
+                h_out_list.append(output)
+            h_in_list = h_out_list
+            output_list.append(output)
+        output_tensor = torch.stack(output_list, dim=0)
+        '''
 
         return output_tensor
 
