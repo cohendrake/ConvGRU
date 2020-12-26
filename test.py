@@ -30,7 +30,7 @@ if __name__ == "__main__":
                            kernel_size, num_layers, bias).float()
     conv1d_gru.initialize()
     conv1d_gru = conv1d_gru.cuda()
-    conv1d_gru = torch.nn.DataParallel(conv1d_gru, device_ids)
+    conv1d_gru = torch.nn.DataParallel(conv1d_gru, device_ids, dim=1)
 
     opt = torch.optim.Adam(conv1d_gru.parameters(), 1e-3)
     criterion = nn.MSELoss(reduction="mean")
