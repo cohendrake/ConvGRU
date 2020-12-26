@@ -22,22 +22,18 @@ class Conv1dGRUCell(jit.ScriptModule):
         self.padding = kernel_size // 2
         self.out_channels = out_channels
 
-        fan_in_i2h = in_channels * kernel_size
-        fan_out_i2h = 3 * out_channels * kernel_size
-        fan_in_h2h = out_channels * kernel_size
-        fan_out_h2h = fan_out_i2h
-        a_i2h = math.sqrt(6 / (fan_in_i2h+fan_out_i2h))
-        a_h2h = math.sqrt(6 / (fan_in_h2h+fan_out_h2h))
+        conv1d_i2h_weight = torch.empty(3*out_channels,
+                                        in_channels,
+                                        kernel_size)
+        nn.init.xavier_uniform_(conv1d_i2h_weight)
+        conv1d_h2h_weight = torch.empty(3*out_channels,
+                                        out_channels,
+                                        kernel_size)
+        nn.init.orthogonal_(conv1d_h2h_weight)
 
-        self.conv1d_i2h_weight = nn.Parameter(
-            torch.empty(3*out_channels,
-                        in_channels,
-                        kernel_size).uniform_(-a_i2h, a_i2h))
+        self.conv1d_i2h_weight = nn.Parameter(conv1d_i2h_weight)
         self.conv1d_i2h_bias = nn.Parameter(torch.zeros(3*self.out_channels))
-        self.conv1d_h2h_weight = nn.Parameter(
-            torch.empty(3*out_channels,
-                        out_channels,
-                        kernel_size).uniform_(-a_h2h, a_h2h))
+        self.conv1d_h2h_weight = nn.Parameter(conv1d_h2h_weight)
         self.conv1d_h2h_bias = nn.Parameter(torch.zeros(3*self.out_channels))
 
     @jit.script_method
