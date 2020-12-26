@@ -1,4 +1,5 @@
 import os
+import time
 import torch
 from torch import nn
 import numpy as np
@@ -16,6 +17,13 @@ if __name__ == "__main__":
     num_layers = 2
     bias = True
 
+    input_tensor = torch.tensor(np.random.randn(
+                                    T, batch_size, in_channels,
+                                    dim_in).astype(np.float32)).cuda()
+    label = torch.tensor(np.random.randn(
+                                    T, batch_size, in_channels,
+                                    dim_in).astype(np.float32)).cuda()
+
     # init test
     device_ids = range(torch.cuda.device_count())
     conv1d_gru = Conv1dGRU(dim_in, in_channels, out_channels,
@@ -28,13 +36,7 @@ if __name__ == "__main__":
     criterion = nn.MSELoss(reduction="mean")
 
     # forward test
-    input_tensor = torch.tensor(np.random.randn(
-                                    batch_size, in_channels,
-                                    dim_in, T).astype(np.float32)).cuda()
-    label = torch.tensor(np.random.randn(
-                                    batch_size, in_channels,
-                                    dim_in, T).astype(np.float32)).cuda()
-
+    start = time.time()
     for i in range(10):
         output_tensor = conv1d_gru(input_tensor)
         loss = criterion(output_tensor, label)
@@ -44,3 +46,5 @@ if __name__ == "__main__":
         opt.zero_grad()
         loss.backward()
         opt.step()
+    end = time.time()
+    print("Cost {:.2f}".format(end-start))

@@ -90,20 +90,26 @@ class Conv1dGRU(nn.Module):
         """
         super(Conv1dGRU, self).__init__()
 
-        in_channels_list = [in_channels] + [out_channels] * (num_layers - 1)
+        if isinstance(out_channels, int):
+            out_channels_list = [out_channels] * num_layers
+        else:
+            assert isinstance(out_channels, list) \
+                and len(out_channels) == num_layers
+            out_channels_list = out_channels
+        in_channels_list = [in_channels] + out_channels_list[:-1]
         if not len(in_channels_list) == num_layers:
             raise ValueError("Inconsistent list length.")
 
         cell_list = [Conv1dGRUCell(dim_in,
                                    cin,
-                                   out_channels,
+                                   cout,
                                    kernel_size,
                                    bias)
-                     for cin in in_channels_list]
+                     for cin, cout in zip(in_channels_list, out_channels_list)]
         self.cell_list = nn.ModuleList(cell_list)
         self.num_layers = num_layers
 
-    def forward(self, input_tensor, hidden_state=None):
+    def forward(self, input_tensor):
         """
         :param input_tensor: (N, Cin, W, T)
             input tensor.
@@ -112,21 +118,19 @@ class Conv1dGRU(nn.Module):
         :return output_tensor: (N, Cout, W, T)
             output tensor.
         """
-        if hidden_state is None:
-            hidden_state_list = self._init_hidden(input_tensor.size(0),
-                                                  input_tensor.device)
-        else:
-            hidden_state_list = torch.split(hidden_state, 1, dim=3)
-        seq_len = input_tensor.size(3)
+
+        hidden_state_list = self._init_hidden(input_tensor.size(1),
+                                              input_tensor.device)
+        seq_len = input_tensor.size(0)
 
         input_layer = input_tensor
         for i in range(self.num_layers):
             h = hidden_state_list[i]
             input_layer_list = []
             for t in range(seq_len):
-                h = self.cell_list[i](input_layer[:, :, :, t], h)
+                h = self.cell_list[i](input_layer[t, :, :, :], h)
                 input_layer_list.append(h)
-            input_layer = torch.stack(input_layer_list, dim=3)
+            input_layer = torch.stack(input_layer_list, dim=0)
         output_tensor = input_layer
 
         return output_tensor
@@ -138,7 +142,7 @@ class Conv1dGRU(nn.Module):
 
     def initialize(self):
         for name, param in self.named_parameters():
-            # print(name, param.shape)
+            print(name, param.shape)
             if 'i2h' in name:
                 if 'weight' in name:
                     nn.init.xavier_uniform_(param)
